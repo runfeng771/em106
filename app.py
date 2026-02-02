@@ -1530,6 +1530,51 @@ body::after{
   --tint1: rgba(26,11,20,.66);
     }
 
+  /* ✅ 新增备注功能css */
+    .note-box{
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .note-label{
+      font-family: var(--mono);
+      font-size: 12px;
+      color: rgba(234,240,255,.70);
+    }
+    .note-input{
+      width: 160px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.22);
+      color: var(--text);
+      outline: none;
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+    .note-input:focus{
+      border-color: rgba(108,168,255,.55);
+      box-shadow: 0 0 0 5px rgba(108,168,255,.14);
+    }
+    .note-saved{
+      font-family: var(--mono);
+      font-size: 11px;
+      color: rgba(50,255,155,.90);
+      display:none;
+    }
+    .note-input.saved{
+      color: rgba(50,255,155,.92);
+      border-color: rgba(255,77,109,.45);
+      background: rgba(255,77,109,.10);
+      box-shadow: 0 0 0 5px rgba(255,77,109,.10);
+      font-weight: 950;
+    }
+    .note-input.saved::placeholder{
+      color: rgba(255,77,109,.55);
+    }
+
+
 </style>
 </head>
 <body>
@@ -1569,7 +1614,20 @@ body::after{
     <div class="hint">查询成功后会自动加入缓存；查询/解封都复用同一套 token + clubInfo 上下文逻辑。</div>
 
     <div class="row">
-      <span class="label" style="color: #ff4d6d;">输入 showid：</span>
+<span class="label"
+  style="
+    color:#ff4d6d;
+    display:inline-flex;
+    align-items:center;
+    padding:8px 12px;
+    border-radius:999px;
+    background: rgba(255,77,109,.12);
+    border: 1px solid rgba(255,77,109,.28);
+    box-shadow: 0 0 0 5px rgba(255,77,109,.08);
+    font-weight:900;
+    letter-spacing:.2px;
+  "
+>输入 showid：</span>
       <input id="showidSearch" placeholder="例如 10518356534" value="10198130419" />
       <button class="btn-good" onclick="lookupUser()">查询uuid</button>
       <button class="btn-danger" onclick="clearUserCache()">清空资料缓存</button>
@@ -1636,6 +1694,36 @@ async function ensureDefaultCached(){
 
 
 function pad2(n){ return String(n).padStart(2,'0'); }
+  /* ✅ 新增备注js */
+function getNote(showid){
+  try{
+    return localStorage.getItem('note_' + showid) || '';
+  }catch(e){
+    return '';
+  }
+}
+
+let _noteTimer = {};
+function saveNote(showid, val){
+  try{
+    localStorage.setItem('note_' + showid, val || '');
+  }catch(e){}
+
+  // 轻提示：已保存
+  const tip = document.getElementById('noteSaved-' + showid);
+  if(tip){
+    tip.style.display = 'block';
+    clearTimeout(_noteTimer[showid]);
+    _noteTimer[showid] = setTimeout(()=>{ tip.style.display='none'; }, 900);
+  }
+  
+  const inp = document.getElementById('note-' + showid);
+    if(inp){
+      const has = (val || '').trim().length > 0;
+      inp.classList.toggle('saved', has);
+    }
+
+}
 
 function fmtHMS(sec){
   sec = Math.max(0, Math.floor(sec));
@@ -1713,9 +1801,26 @@ function renderPlayerCard(p, {showSelect=true, showUnlock=true}={}){
         ${cachedAt}
       </div>
     </div>
-    <div class="p-actions">
-      ${showSelect ? `<button class="btn-warn" onclick="selectCached('${showid}')">选择</button>` : ``}
-      ${showUnlock ? `<button class="btn-good" onclick="unlockDirect('${showid}')">一键解封CMS</button>` : ``}
+    <div class="p-actions" style="flex-direction:column; align-items:flex-end;">
+      <div style="display:flex; gap:8px;">
+        ${showSelect ? `<button class="btn-warn" onclick="selectCached('${showid}')">选择</button>` : ``}
+        ${showUnlock ? `<button class="btn-good" onclick="unlockDirect('${showid}')">一键解封CMS</button>` : ``}
+      </div>
+    
+      <div class="note-box">
+        <div class="note-label">备注登录账号</div>
+        ${(()=>{ const n=getNote(showid); return `
+        <input class="note-input ${n ? 'saved' : ''}"
+          id="note-${showid}"
+          placeholder="例如：tbh2356@126.com"
+          value="${escapeHtml(n)}"
+          oninput="saveNote('${showid}', this.value)"
+        />`; })()}
+
+        <div class="note-saved" id="noteSaved-${showid}">已保存</div>
+      </div>
+    </div>
+
     </div>
   </div>`;
 
